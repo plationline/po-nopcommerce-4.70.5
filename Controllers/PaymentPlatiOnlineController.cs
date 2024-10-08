@@ -27,8 +27,6 @@ using Po.Requests.Query.Objects;
 
 namespace Nop.Plugin.Payments.PayPalStandard.Controllers
 {
-    [AuthorizeAdmin]
-    [Area(AreaNames.ADMIN)]
     [AutoValidateAntiforgeryToken]
     public class PaymentPlatiOnlineController : BasePaymentController
     {
@@ -239,7 +237,7 @@ namespace Nop.Plugin.Payments.PayPalStandard.Controllers
         }
 
         //[HttpPost]
-        public async Task<IActionResult> CheckoutCompletedAsync()
+        public async Task<IActionResult> CheckoutCompleted()
         {
             /*if (!_permissionService.Authorize(StandardPermissionProvider.ManagePaymentMethods))
                 return AccessDeniedView();*/
