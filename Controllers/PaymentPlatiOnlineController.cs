@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Mvc;
 using Nop.Core;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
-using Nop.Plugin.Payments.PlatiOnline;
 using Nop.Plugin.Payments.PlatiOnline.Models;
 using Nop.Services;
 using Nop.Services.Common;
@@ -25,7 +24,7 @@ using Po.Requests.Authorization.Objects;
 using Po.Requests.Itsn.Objects;
 using Po.Requests.Query.Objects;
 
-namespace Nop.Plugin.Payments.PayPalStandard.Controllers
+namespace Nop.Plugin.Payments.PlatiOnline.Controllers
 {
     [AutoValidateAntiforgeryToken]
     public class PaymentPlatiOnlineController : BasePaymentController
@@ -236,349 +235,354 @@ namespace Nop.Plugin.Payments.PayPalStandard.Controllers
             return RedirectToRoute("Homepage");
         }
 
-        //[HttpPost]
         public async Task<IActionResult> CheckoutCompleted()
         {
-            /*if (!_permissionService.Authorize(StandardPermissionProvider.ManagePaymentMethods))
-                return AccessDeniedView();*/
+            try
+            { 
+                int orderId = Convert.ToInt32(_webHelper.QueryString<string>("orderId"));
+                string error = _webHelper.QueryString<string>("error");
 
-            int orderId = Convert.ToInt32(_webHelper.QueryString<string>("orderId"));
-            string error = _webHelper.QueryString<string>("error");
+                CheckoutCompletedModel model = new CheckoutCompletedModel();
 
-            CheckoutCompletedModel model = new CheckoutCompletedModel();
+                OrderNote orderNote = new OrderNote();
+                orderNote.CreatedOnUtc = DateTime.Now;
+                orderNote.DisplayToCustomer = false;
 
-            OrderNote orderNote = new OrderNote();
-            orderNote.CreatedOnUtc = DateTime.Now;
-            orderNote.DisplayToCustomer = false;
+                Core.Domain.Orders.Order order = new Core.Domain.Orders.Order();
+                String note = "";
 
-            Core.Domain.Orders.Order order = new Core.Domain.Orders.Order();
-            String note = "";
-
-            if (error == null)
-            {
-                Po.Po po = new Po.Po();
-
-                #region Merchant settings
-
-                po.merchant_f_login = _platiOnlinePaymentSettings.Merchant_Id;
-                po.merchant_ivItsn = _platiOnlinePaymentSettings.IvItsn;
-                po.merchant_privateKey = _platiOnlinePaymentSettings.Private_Key;
-                po.merchant_relay_response_f_relay_response_url = _webHelper.GetStoreLocation(_platiOnlinePaymentSettings.SSL) + _platiOnlinePaymentSettings.Relay_Response_URL;
-
-                #endregion
-
-                try
+                if (error == null)
                 {
-                    switch (_platiOnlinePaymentSettings.RelayMethod.ToString())
+                    Po.Po po = new Po.Po();
+
+                    #region Merchant settings
+
+                    po.merchant_f_login = _platiOnlinePaymentSettings.Merchant_Id;
+                    po.merchant_ivItsn = _platiOnlinePaymentSettings.IvItsn;
+                    po.merchant_privateKey = _platiOnlinePaymentSettings.Private_Key;
+                    po.merchant_relay_response_f_relay_response_url = _webHelper.GetStoreLocation(_platiOnlinePaymentSettings.SSL) + _platiOnlinePaymentSettings.Relay_Response_URL;
+
+                    #endregion
+
+                    try
                     {
-                        #region 0.PTOR
-                        case "PTOR":  //POST using JavaScript
+                        switch (_platiOnlinePaymentSettings.RelayMethod.ToString())
+                        {
+                            #region 0.PTOR
+                            case "PTOR":  //POST using JavaScript
 
-                            string f_relay_message0 = Request.Form["f_relay_message"];
-                            string f_crypt_message0 = Request.Form["f_crypt_message"];
+                                string f_relay_message0 = Request.Form["f_relay_message"];
+                                string f_crypt_message0 = Request.Form["f_crypt_message"];
 
-                            po_auth_response response0 = (po_auth_response)po.Authorization.Response(f_relay_message0, f_crypt_message0);
+                                po_auth_response response0 = (po_auth_response)po.Authorization.Response(f_relay_message0, f_crypt_message0);
 
-                            order = await _orderService.GetOrderByIdAsync(Convert.ToInt32(response0.f_order_number));
+                                order = await _orderService.GetOrderByIdAsync(Convert.ToInt32(response0.f_order_number));
 
-                            //order_status
-                            switch (response0.x_response_code)
-                            {
-                                case "1":
-                                    order.PaymentStatusId = (int)PaymentStatus.PendingAuthorized;
-                                    order.OrderStatusId = (int)OrderStatus.Pending;
-                                    break;
-                                case "2": 
-                                    order.PaymentStatusId = (int)PaymentStatus.Authorized;
-                                    order.OrderStatusId = (int)OrderStatus.Processing;
-                                    break;
-                                case "3": 
-                                    order.PaymentStatusId = (int)PaymentStatus.PendingSettleed;
-                                    break;
-                                case "5": 
-                                    order.PaymentStatusId = (int)PaymentStatus.Settled;
-                                    break;
-                                case "6": 
-                                    order.PaymentStatusId = (int)PaymentStatus.PendingVoided;
-                                    order.OrderStatusId = (int)OrderStatus.Pending;
-                                    break;
-                                case "7": 
-                                    order.PaymentStatusId = (int)PaymentStatus.Voided;
-                                    order.OrderStatusId = (int)OrderStatus.Cancelled;
-                                    break;
-                                case "8":
-                                    order.PaymentStatusId = (int)PaymentStatus.Declined;
-                                    order.OrderStatusId = (int)OrderStatus.Cancelled;
-                                    break;
-                                case "9":
-                                    order.PaymentStatusId = (int)PaymentStatus.Expired;
-                                    order.OrderStatusId = (int)OrderStatus.Cancelled;
-                                    break;
-                                case "10":
-                                    order.PaymentStatusId = (int)PaymentStatus.Error;
-                                    break;
-                                case "13":
-                                    order.PaymentStatusId = (int)PaymentStatus.OnHold;
-                                    order.OrderStatusId = (int)OrderStatus.Pending;
-                                    break;
-                            }
+                                //order_status
+                                switch (response0.x_response_code)
+                                {
+                                    case "1":
+                                        order.PaymentStatusId = (int)PaymentStatus.PendingAuthorized;
+                                        order.OrderStatusId = (int)OrderStatus.Pending;
+                                        break;
+                                    case "2": 
+                                        order.PaymentStatusId = (int)PaymentStatus.Authorized;
+                                        order.OrderStatusId = (int)OrderStatus.Processing;
+                                        break;
+                                    case "3": 
+                                        order.PaymentStatusId = (int)PaymentStatus.PendingSettleed;
+                                        break;
+                                    case "5": 
+                                        order.PaymentStatusId = (int)PaymentStatus.Settled;
+                                        break;
+                                    case "6": 
+                                        order.PaymentStatusId = (int)PaymentStatus.PendingVoided;
+                                        order.OrderStatusId = (int)OrderStatus.Pending;
+                                        break;
+                                    case "7": 
+                                        order.PaymentStatusId = (int)PaymentStatus.Voided;
+                                        order.OrderStatusId = (int)OrderStatus.Cancelled;
+                                        break;
+                                    case "8":
+                                        order.PaymentStatusId = (int)PaymentStatus.Declined;
+                                        order.OrderStatusId = (int)OrderStatus.Cancelled;
+                                        break;
+                                    case "9":
+                                        order.PaymentStatusId = (int)PaymentStatus.Expired;
+                                        order.OrderStatusId = (int)OrderStatus.Cancelled;
+                                        break;
+                                    case "10":
+                                        order.PaymentStatusId = (int)PaymentStatus.Error;
+                                        break;
+                                    case "13":
+                                        order.PaymentStatusId = (int)PaymentStatus.OnHold;
+                                        order.OrderStatusId = (int)OrderStatus.Pending;
+                                        break;
+                                }
 
-                            //order_note
-                            if (response0.x_response_code != "10")
-                            {
-                                note = "PlatiOnline transaction status : " + order.PaymentStatus.ToString();
-                            }
-                            else
-                            {
-                                note = "An error was encountered in PlatiOnline authorization process: " + response0.x_response_reason_text;
-                            }
+                                //order_note
+                                if (response0.x_response_code != "10")
+                                {
+                                    note = "PlatiOnline transaction status : " + order.PaymentStatus.ToString();
+                                }
+                                else
+                                {
+                                    note = "An error was encountered in PlatiOnline authorization process: " + response0.x_response_reason_text;
+                                }
 
-                            //order note
-                            await _orderService.InsertOrderNoteAsync(new OrderNote
-                            {
-                                OrderId = order.Id,
-                                Note = note,
-                                DisplayToCustomer = false,
-                                CreatedOnUtc = DateTime.UtcNow
-                            });
+                                //order note
+                                await _orderService.InsertOrderNoteAsync(new OrderNote
+                                {
+                                    OrderId = order.Id,
+                                    Note = note,
+                                    DisplayToCustomer = false,
+                                    CreatedOnUtc = DateTime.UtcNow
+                                });
 
-                            //update orer status
-                            await _orderService.UpdateOrderAsync(order);
+                                //update orer status
+                                await _orderService.UpdateOrderAsync(order);
 
-                            //model
-                            model.Order_number = response0.f_order_number;
-                            model.Order_status = Enum.GetName(typeof(OrderStatus), order.OrderStatusId);
-                            model.Payment_status = Enum.GetName(typeof(PaymentStatus), order.PaymentStatusId);
-                            model.Response_reason_text = response0.x_response_reason_text;
+                                //model
+                                model.Order_number = response0.f_order_number;
+                                model.Order_status = Enum.GetName(typeof(OrderStatus), order.OrderStatusId);
+                                model.Payment_status = Enum.GetName(typeof(PaymentStatus), order.PaymentStatusId);
+                                model.Response_reason_text = response0.x_response_reason_text;
 
-                            return View("Plugins/Payments.PlatiOnline/Views/CheckoutCompleted.cshtml", model);
+                                return View("Plugins/Payments.PlatiOnline/Views/CheckoutCompleted.cshtml", model);
 
-                        #endregion
+                            #endregion
 
-                        #region 1.POST_S2S_PO_PAGE
-                        case "POST_S2S_PO_PAGE": //POST server PO to merchant server, customer get the PO template
+                            #region 1.POST_S2S_PO_PAGE
+                            case "POST_S2S_PO_PAGE": //POST server PO to merchant server, customer get the PO template
                             
-                            string f_relay_message1 = Request.Form["f_relay_message"];
-                            string f_crypt_message1 = Request.Form["f_crypt_message"];
+                                string f_relay_message1 = Request.Form["f_relay_message"];
+                                string f_crypt_message1 = Request.Form["f_crypt_message"];
 
-                            po_auth_response response1 = (po_auth_response)po.Authorization.Response(f_relay_message1, f_crypt_message1);
+                                po_auth_response response1 = (po_auth_response)po.Authorization.Response(f_relay_message1, f_crypt_message1);
 
-                            order = await _orderService.GetOrderByIdAsync(Convert.ToInt32(response1.f_order_number));
+                                order = await _orderService.GetOrderByIdAsync(Convert.ToInt32(response1.f_order_number));
 
-                            bool raspuns_procesat1 = true;
+                                bool raspuns_procesat1 = true;
 
-                            switch (response1.x_response_code)
-                            {
-                                case "1":
-                                    order.PaymentStatusId = (int)PaymentStatus.PendingAuthorized;
-                                    order.OrderStatusId = (int)OrderStatus.Pending;
-                                    break;
-                                case "2":
-                                    order.PaymentStatusId = (int)PaymentStatus.Authorized;
-                                    order.OrderStatusId = (int)OrderStatus.Processing;
-                                    break;
-                                case "3":
-                                    order.PaymentStatusId = (int)PaymentStatus.PendingSettleed;
-                                    break;
-                                case "5":
-                                    order.PaymentStatusId = (int)PaymentStatus.Settled;
-                                    break;
-                                case "6":
-                                    order.PaymentStatusId = (int)PaymentStatus.PendingVoided;
-                                    order.OrderStatusId = (int)OrderStatus.Pending;
-                                    break;
-                                case "7":
-                                    order.PaymentStatusId = (int)PaymentStatus.Voided;
-                                    order.OrderStatusId = (int)OrderStatus.Cancelled;
-                                    break;
-                                case "8":
-                                    order.PaymentStatusId = (int)PaymentStatus.Declined;
-                                    order.OrderStatusId = (int)OrderStatus.Cancelled;
-                                    break;
-                                case "9":
-                                    order.PaymentStatusId = (int)PaymentStatus.Expired;
-                                    order.OrderStatusId = (int)OrderStatus.Cancelled;
-                                    break;
-                                case "10":
-                                    order.PaymentStatusId = (int)PaymentStatus.Error;
-                                    break;
-                                case "13":
-                                    order.PaymentStatusId = (int)PaymentStatus.OnHold;
-                                    order.OrderStatusId = (int)OrderStatus.Pending;
-                                    break;
-                            }
+                                switch (response1.x_response_code)
+                                {
+                                    case "1":
+                                        order.PaymentStatusId = (int)PaymentStatus.PendingAuthorized;
+                                        order.OrderStatusId = (int)OrderStatus.Pending;
+                                        break;
+                                    case "2":
+                                        order.PaymentStatusId = (int)PaymentStatus.Authorized;
+                                        order.OrderStatusId = (int)OrderStatus.Processing;
+                                        break;
+                                    case "3":
+                                        order.PaymentStatusId = (int)PaymentStatus.PendingSettleed;
+                                        break;
+                                    case "5":
+                                        order.PaymentStatusId = (int)PaymentStatus.Settled;
+                                        break;
+                                    case "6":
+                                        order.PaymentStatusId = (int)PaymentStatus.PendingVoided;
+                                        order.OrderStatusId = (int)OrderStatus.Pending;
+                                        break;
+                                    case "7":
+                                        order.PaymentStatusId = (int)PaymentStatus.Voided;
+                                        order.OrderStatusId = (int)OrderStatus.Cancelled;
+                                        break;
+                                    case "8":
+                                        order.PaymentStatusId = (int)PaymentStatus.Declined;
+                                        order.OrderStatusId = (int)OrderStatus.Cancelled;
+                                        break;
+                                    case "9":
+                                        order.PaymentStatusId = (int)PaymentStatus.Expired;
+                                        order.OrderStatusId = (int)OrderStatus.Cancelled;
+                                        break;
+                                    case "10":
+                                        order.PaymentStatusId = (int)PaymentStatus.Error;
+                                        break;
+                                    case "13":
+                                        order.PaymentStatusId = (int)PaymentStatus.OnHold;
+                                        order.OrderStatusId = (int)OrderStatus.Pending;
+                                        break;
+                                }
 
-                            //order_note
-                            if (response1.x_response_code != "10")
-                            {
-                                note = "PlatiOnline transaction status : " + order.PaymentStatus.ToString();
-                            }
-                            else
-                            {
-                                note = "An error was encountered in PlatiOnline authorization process: " + response1.x_response_reason_text;
-                            }
+                                //order_note
+                                if (response1.x_response_code != "10")
+                                {
+                                    note = "PlatiOnline transaction status : " + order.PaymentStatus.ToString();
+                                }
+                                else
+                                {
+                                    note = "An error was encountered in PlatiOnline authorization process: " + response1.x_response_reason_text;
+                                }
 
-                            //order note
-                            await _orderService.InsertOrderNoteAsync(new OrderNote
-                            {
-                                OrderId = order.Id,
-                                Note = note,
-                                DisplayToCustomer = false,
-                                CreatedOnUtc = DateTime.UtcNow
-                            });
+                                //order note
+                                await _orderService.InsertOrderNoteAsync(new OrderNote
+                                {
+                                    OrderId = order.Id,
+                                    Note = note,
+                                    DisplayToCustomer = false,
+                                    CreatedOnUtc = DateTime.UtcNow
+                                });
 
-                            // this works for f_relay_handshake = 1 in authorization request. I want HANDSHAKE between merchant server and PO server for POST_S2S_PO_PAGE
-                            // if the response was processed, I send TRUE to PO server for PO_Transaction_Response_Processing
-                            // if the response was not processed and I want the PO server to resend the transaction status, I send RETRY to PO server for PO_Transaction_Response_Processing
-                            if (po.Authorization.transaction_relay_response.f_relay_handshake == "1")
-                            {
-                                //_webHelper.AppendHeaderAsync("User-Agent", "Mozilla/5.0 (Plati Online Relay Response Service)");
+                                // this works for f_relay_handshake = 1 in authorization request. I want HANDSHAKE between merchant server and PO server for POST_S2S_PO_PAGE
+                                // if the response was processed, I send TRUE to PO server for PO_Transaction_Response_Processing
+                                // if the response was not processed and I want the PO server to resend the transaction status, I send RETRY to PO server for PO_Transaction_Response_Processing
+                                if (po.Authorization.transaction_relay_response.f_relay_handshake == "1")
+                                {
+                                    //_webHelper.AppendHeaderAsync("User-Agent", "Mozilla/5.0 (Plati Online Relay Response Service)");
                                 
-                                if (raspuns_procesat1)
+                                    if (raspuns_procesat1)
+                                    {
+                                      // Response.AppendHeader("PO_Transaction_Response_Processing", "true");
+                                    }
+                                    else
+                                    {
+                                        //Response.AppendHeader("PO_Transaction_Response_Processing", "retry");
+                                    }
+                                }
+                                return new EmptyResult();
+                            #endregion
+
+                            #region 2.POST_S2S_MT_PAGE
+                            case "POST_S2S_MT_PAGE": //POST server PO to merchant server, customer get the Merchant template
+
+                                string f_relay_message2 = Request.Form["f_relay_message"];
+                                string f_crypt_message2 = Request.Form["f_crypt_message"];
+
+                                po_auth_response response2 = (po_auth_response)po.Authorization.Response(f_relay_message2, f_crypt_message2);
+
+                                order = await _orderService.GetOrderByIdAsync(Convert.ToInt32(response2.f_order_number));
+
+                                bool raspuns_procesat2 = true;
+
+                                switch (response2.x_response_code)
                                 {
-                                  // Response.AppendHeader("PO_Transaction_Response_Processing", "true");
+                                    case "1":
+                                        order.PaymentStatusId = (int)PaymentStatus.PendingAuthorized;
+                                        order.OrderStatusId = (int)OrderStatus.Pending;
+                                        break;
+                                    case "2":
+                                        order.PaymentStatusId = (int)PaymentStatus.Authorized;
+                                        order.OrderStatusId = (int)OrderStatus.Processing;
+                                        break;
+                                    case "3":
+                                        order.PaymentStatusId = (int)PaymentStatus.PendingSettleed;
+                                        break;
+                                    case "5":
+                                        order.PaymentStatusId = (int)PaymentStatus.Settled;
+                                        break;
+                                    case "6":
+                                        order.PaymentStatusId = (int)PaymentStatus.PendingVoided;
+                                        order.OrderStatusId = (int)OrderStatus.Pending;
+                                        break;
+                                    case "7":
+                                        order.PaymentStatusId = (int)PaymentStatus.Voided;
+                                        order.OrderStatusId = (int)OrderStatus.Cancelled;
+                                        break;
+                                    case "8":
+                                        order.PaymentStatusId = (int)PaymentStatus.Declined;
+                                        order.OrderStatusId = (int)OrderStatus.Cancelled;
+                                        break;
+                                    case "9":
+                                        order.PaymentStatusId = (int)PaymentStatus.Expired;
+                                        order.OrderStatusId = (int)OrderStatus.Cancelled;
+                                        break;
+                                    case "10":
+                                        order.PaymentStatusId = (int)PaymentStatus.Error;
+                                        break;
+                                    case "13":
+                                        order.PaymentStatusId = (int)PaymentStatus.OnHold;
+                                        order.OrderStatusId = (int)OrderStatus.Pending;
+                                        break;
+                                }
+
+                                //order_note
+                                if (response2.x_response_code != "10")
+                                {
+                                    note = "PlatiOnline transaction status : " + order.PaymentStatus.ToString();
                                 }
                                 else
                                 {
-                                    //Response.AppendHeader("PO_Transaction_Response_Processing", "retry");
+                                    note = "An error was encountered in PlatiOnline authorization process: " + response2.x_response_reason_text;
                                 }
-                            }
-                            return new EmptyResult();
-                        #endregion
 
-                        #region 2.POST_S2S_MT_PAGE
-                        case "POST_S2S_MT_PAGE": //POST server PO to merchant server, customer get the Merchant template
-
-                            string f_relay_message2 = Request.Form["f_relay_message"];
-                            string f_crypt_message2 = Request.Form["f_crypt_message"];
-
-                            po_auth_response response2 = (po_auth_response)po.Authorization.Response(f_relay_message2, f_crypt_message2);
-
-                            order = await _orderService.GetOrderByIdAsync(Convert.ToInt32(response2.f_order_number));
-
-                            bool raspuns_procesat2 = true;
-
-                            switch (response2.x_response_code)
-                            {
-                                case "1":
-                                    order.PaymentStatusId = (int)PaymentStatus.PendingAuthorized;
-                                    order.OrderStatusId = (int)OrderStatus.Pending;
-                                    break;
-                                case "2":
-                                    order.PaymentStatusId = (int)PaymentStatus.Authorized;
-                                    order.OrderStatusId = (int)OrderStatus.Processing;
-                                    break;
-                                case "3":
-                                    order.PaymentStatusId = (int)PaymentStatus.PendingSettleed;
-                                    break;
-                                case "5":
-                                    order.PaymentStatusId = (int)PaymentStatus.Settled;
-                                    break;
-                                case "6":
-                                    order.PaymentStatusId = (int)PaymentStatus.PendingVoided;
-                                    order.OrderStatusId = (int)OrderStatus.Pending;
-                                    break;
-                                case "7":
-                                    order.PaymentStatusId = (int)PaymentStatus.Voided;
-                                    order.OrderStatusId = (int)OrderStatus.Cancelled;
-                                    break;
-                                case "8":
-                                    order.PaymentStatusId = (int)PaymentStatus.Declined;
-                                    order.OrderStatusId = (int)OrderStatus.Cancelled;
-                                    break;
-                                case "9":
-                                    order.PaymentStatusId = (int)PaymentStatus.Expired;
-                                    order.OrderStatusId = (int)OrderStatus.Cancelled;
-                                    break;
-                                case "10":
-                                    order.PaymentStatusId = (int)PaymentStatus.Error;
-                                    break;
-                                case "13":
-                                    order.PaymentStatusId = (int)PaymentStatus.OnHold;
-                                    order.OrderStatusId = (int)OrderStatus.Pending;
-                                    break;
-                            }
-
-                            //order_note
-                            if (response2.x_response_code != "10")
-                            {
-                                note = "PlatiOnline transaction status : " + order.PaymentStatus.ToString();
-                            }
-                            else
-                            {
-                                note = "An error was encountered in PlatiOnline authorization process: " + response2.x_response_reason_text;
-                            }
-
-                            //order note
-                            await _orderService.InsertOrderNoteAsync(new OrderNote
-                            {
-                                OrderId = order.Id,
-                                Note = note,
-                                DisplayToCustomer = false,
-                                CreatedOnUtc = DateTime.UtcNow
-                            });
-
-                            // instead of sending a <h2> tag using echo, you can send an HTML code, based on X_RESPONSE_CODE
-                            // this works for f_relay_handshake = 1 in authorization request. I want HANDSHAKE between merchant server and PO server for POST_S2S_MT_PAGE
-                            // if the response was processed, I send TRUE to PO server for PO_Transaction_Response_Processing
-                            // if the response was not processed and I want the PO server to resend the transaction status, I send RETRY to PO server for PO_Transaction_Response_Processing
-                            if (po.Authorization.transaction_relay_response.f_relay_handshake == "1")
-                            {
-                                //Response.AppendHeader("User-Agent", "Mozilla/5.0 (Plati Online Relay Response Service)");
-
-                                if (raspuns_procesat2)
+                                //order note
+                                await _orderService.InsertOrderNoteAsync(new OrderNote
                                 {
-                                    //Response.AppendHeader("PO_Transaction_Response_Processing", "true");
-                                }
-                                else
-                                {
-                                    //Response.AppendHeader("PO_Transaction_Response_Processing", "retry");
-                                }
-                            }
+                                    OrderId = order.Id,
+                                    Note = note,
+                                    DisplayToCustomer = false,
+                                    CreatedOnUtc = DateTime.UtcNow
+                                });
 
-                            //model
-                            model.Order_number = response2.f_order_number;
-                            model.Order_status = Enum.GetName(typeof(OrderStatus), order.OrderStatusId);
-                            model.Payment_status = Enum.GetName(typeof(PaymentStatus), order.PaymentStatusId);
-                            model.Response_reason_text = response2.x_response_reason_text;
+                                // instead of sending a <h2> tag using echo, you can send an HTML code, based on X_RESPONSE_CODE
+                                // this works for f_relay_handshake = 1 in authorization request. I want HANDSHAKE between merchant server and PO server for POST_S2S_MT_PAGE
+                                // if the response was processed, I send TRUE to PO server for PO_Transaction_Response_Processing
+                                // if the response was not processed and I want the PO server to resend the transaction status, I send RETRY to PO server for PO_Transaction_Response_Processing
+                                if (po.Authorization.transaction_relay_response.f_relay_handshake == "1")
+                                {
+                                    //Response.AppendHeader("User-Agent", "Mozilla/5.0 (Plati Online Relay Response Service)");
+
+                                    if (raspuns_procesat2)
+                                    {
+                                        //Response.AppendHeader("PO_Transaction_Response_Processing", "true");
+                                    }
+                                    else
+                                    {
+                                        //Response.AppendHeader("PO_Transaction_Response_Processing", "retry");
+                                    }
+                                }
+
+                                //model
+                                model.Order_number = response2.f_order_number;
+                                model.Order_status = Enum.GetName(typeof(OrderStatus), order.OrderStatusId);
+                                model.Payment_status = Enum.GetName(typeof(PaymentStatus), order.PaymentStatusId);
+                                model.Response_reason_text = response2.x_response_reason_text;
                             
-                            return View("Plugins/Payments.PlatiOnline/Views/CheckoutCompleted.cshtml", model);
+                                return View("Plugins/Payments.PlatiOnline/Views/CheckoutCompleted.cshtml", model);
 
-                        #endregion
+                            #endregion
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        model.Order_number = orderId.ToString();
+                        model.Order_status = OrderStatus.Pending.ToString();
+                        model.Payment_status = PaymentStatus.Error.ToString();
+                        model.Response_reason_text = "An error was encountered in PlatiOnline authorization process: " + HttpUtility.UrlDecode(e.Message);
                     }
                 }
-                catch (Exception e)
+                else
                 {
+                    //order
+                    order = await _orderService.GetOrderByIdAsync(orderId);
+                    order.PaymentStatusId = (int)PaymentStatus.Error;
+                    order.OrderStatusId = (int)OrderStatus.Pending;
+                    await _orderService.UpdateOrderAsync (order);
+
+                    //order note
+                    await _orderService.InsertOrderNoteAsync(new OrderNote
+                    {
+                        OrderId = order.Id,
+                        Note = "An error was encountered in PlatiOnline authorization process: " + HttpUtility.UrlDecode(error),
+                        DisplayToCustomer = false,
+                        CreatedOnUtc = DateTime.UtcNow
+                    });
+
                     model.Order_number = orderId.ToString();
-                    model.Order_status = OrderStatus.Pending.ToString();
-                    model.Payment_status = PaymentStatus.Error.ToString();
-                    model.Response_reason_text = "An error was encountered in PlatiOnline authorization process: " + HttpUtility.UrlDecode(e.Message);
+                    model.Order_status = Enum.GetName(typeof(OrderStatus), order.OrderStatusId);
+                    model.Payment_status = Enum.GetName(typeof(PaymentStatus), order.PaymentStatusId);
+                    model.Response_reason_text = error;
                 }
+
+                return View("~/Plugins/Payments.PlatiOnline/Views/CheckoutCompleted.cshtml", model);
             }
-            else
+            catch (Exception exception)
             {
-                //order
-                order = await _orderService.GetOrderByIdAsync(orderId);
-                order.PaymentStatusId = (int)PaymentStatus.Error;
-                order.OrderStatusId = (int)OrderStatus.Pending;
-                await _orderService.UpdateOrderAsync (order);
+                _notificationService.ErrorNotification(exception.Message);
 
-                //order note
-                await _orderService.InsertOrderNoteAsync(new OrderNote
-                {
-                    OrderId = order.Id,
-                    Note = "An error was encountered in PlatiOnline authorization process: " + HttpUtility.UrlDecode(error),
-                    DisplayToCustomer = false,
-                    CreatedOnUtc = DateTime.UtcNow
-                });
-
-                model.Order_number = orderId.ToString();
-                model.Order_status = Enum.GetName(typeof(OrderStatus), order.OrderStatusId);
-                model.Payment_status = Enum.GetName(typeof(PaymentStatus), order.PaymentStatusId);
-                model.Response_reason_text = error;
+                return RedirectToRoute("ShoppingCart");
             }
-
-            return View("~/Plugins/Payments.PlatiOnline/Views/CheckoutCompleted.cshtml", model);
         }
 
         [HttpPost]
