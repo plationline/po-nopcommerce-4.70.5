@@ -26,7 +26,6 @@ using Po.Requests.Query.Objects;
 
 namespace Nop.Plugin.Payments.PlatiOnline.Controllers
 {
-    [AutoValidateAntiforgeryToken]
     public class PaymentPlatiOnlineController : BasePaymentController
     {
         #region Fields
@@ -235,6 +234,7 @@ namespace Nop.Plugin.Payments.PlatiOnline.Controllers
             return RedirectToRoute("Homepage");
         }
 
+        [HttpPost]
         public async Task<IActionResult> CheckoutCompleted()
         {
             try
